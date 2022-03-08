@@ -1,4 +1,4 @@
 void main()
 {
-	SetOutput(Sample()* 2.0);
+	SetOutput(Sample()* 3.0);
 }
