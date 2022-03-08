@@ -52,8 +52,8 @@ option(OPROFILING "Enable profiling" OFF)
 # TODO: Add DSPSpy
 option(DSPTOOL "Build dsptool" OFF)
 
-# Enable SDL for default on operating systems that aren't OSX, Android, Linux or Windows.
-if(NOT APPLE AND NOT ANDROID AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT MSVC)
+# Enable SDL for default on operating systems that aren't Android, Linux or Windows.
+if(NOT ANDROID AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT MSVC)
   option(ENABLE_SDL "Enables SDL as a generic controller backend" ON)
 else()
   option(ENABLE_SDL "Enables SDL as a generic controller backend" OFF)
@@ -446,12 +446,7 @@ if(ENABLE_X11)
   endif()
 endif()
 
-if(ANDROID)
-  set(EGL_FOUND 1)
-  set(EGL_LIBRARIES EGL)
-  add_definitions(-DHAVE_EGL=1)
-  message(STATUS "EGL OpenGL interface enabled")
-elseif(ENABLE_EGL)
+if(ENABLE_EGL)
   find_package(EGL)
   if(EGL_FOUND)
     add_definitions(-DHAVE_EGL=1)
@@ -530,18 +525,20 @@ endif()
 #     should be linked statically)
 #   - place the CMakeLists.txt in the first-level subdirectory, e.g.
 #     Externals/zlib/CMakeLists.txt (that is: NOT in some Src/ subdirectory)
-
+#
 if (_M_X86)
   add_subdirectory(Externals/Bochs_disasm)
 endif()
-
-if(NOT ANDROID)
-  add_subdirectory(Externals/cpp-optparse)
-  add_subdirectory(Externals/minizip)
-  include_directories(External/minizip)
-endif()
+add_subdirectory(Externals/cpp-optparse)
 add_subdirectory(Externals/fmt EXCLUDE_FROM_ALL)
 add_subdirectory(Externals/glslang)
+add_subdirectory(Externals/imgui)
+
+find_package(pugixml)
+if(NOT pugixml_FOUND)
+  message(STATUS "Using static pugixml from Externals")
+  add_subdirectory(Externals/pugixml)
+endif()
 
 if(USE_SHARED_ENET)
   check_lib(ENET libenet enet enet/enet.h QUIET)
@@ -582,6 +579,9 @@ else()
   message(STATUS "Shared zlib not found, falling back to the static library")
   add_subdirectory(Externals/zlib)
 endif()
+
+add_subdirectory(Externals/minizip)
+include_directories(External/minizip)
 
 if(NOT APPLE)
   check_lib(LZO "(no .pc for lzo2)" lzo2 lzo/lzo1x.h QUIET)
@@ -683,8 +683,6 @@ else()
   include_directories(Externals/mbedtls/include)
 endif()
 
-if (NOT ANDROID)
-#curl
 find_package(CURL)
 if(CURL_FOUND)
   message(STATUS "Using shared libcurl")
@@ -696,17 +694,10 @@ else()
   include_directories(BEFORE Externals/curl/include)
 endif()
 
-# pugixml
-find_package(pugixml)
-if(NOT pugixml_FOUND)
-  message(STATUS "Using static pugixml from Externals")
-  add_subdirectory(Externals/pugixml)
+if (NOT ANDROID)
+  find_library(ICONV_LIBRARIES NAMES iconv libiconv libiconv-2 c)
+  find_path(ICONV_INCLUDE_DIR NAMES iconv.h)
 endif()
-endif()
-
-# iconv
-find_library(ICONV_LIBRARIES NAMES iconv libiconv libiconv-2 c)
-find_path(ICONV_INCLUDE_DIR NAMES iconv.h)
 
 if (NOT ANDROID AND ICONV_LIBRARIES AND ICONV_INCLUDE_DIR)
   mark_as_advanced(ICONV_INCLUDE_DIR ICONV_LIBRARIES)
@@ -756,7 +747,7 @@ include_directories("${PROJECT_BINARY_DIR}/Source/Core")
 ########################################
 # Unit testing.
 #
-if(NOT ANDROID AND ENABLE_TESTS)
+if(ENABLE_TESTS)
   message(STATUS "Using static gtest from Externals")
   add_subdirectory(Externals/gtest EXCLUDE_FROM_ALL)
 else()
