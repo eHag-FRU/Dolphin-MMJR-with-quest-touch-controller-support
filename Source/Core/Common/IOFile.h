@@ -1,12 +1,13 @@
 // Copyright 2008 Dolphin Emulator Project
-// Licensed under GPLv2+
-// Refer to the license.txt file included.
+// SPDX-License-Identifier: GPL-2.0-or-later
 
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdio>
 #include <string>
+#include <string_view>
 
 #include "Common/CommonTypes.h"
 
@@ -57,6 +58,18 @@ public:
     return m_good;
   }
 
+  template <typename T, std::size_t N>
+  bool ReadArray(std::array<T, N>* elements, size_t* num_read = nullptr)
+  {
+    return ReadArray(elements->data(), elements->size(), num_read);
+  }
+
+  template <typename T, std::size_t N>
+  bool WriteArray(const std::array<T, N>& elements)
+  {
+    return WriteArray(elements.data(), elements.size());
+  }
+
   bool ReadBytes(void* data, size_t length)
   {
     return ReadArray(reinterpret_cast<char*>(data), length);
@@ -66,6 +79,8 @@ public:
   {
     return WriteArray(reinterpret_cast<const char*>(data), length);
   }
+
+  bool WriteString(std::string_view str) { return WriteBytes(str.data(), str.size()); }
 
   bool IsOpen() const { return nullptr != m_file; }
   // m_good is set to false when a read, write or other function fails

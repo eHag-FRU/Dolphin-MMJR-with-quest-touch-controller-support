@@ -1,6 +1,5 @@
 // Copyright 2008 Dolphin Emulator Project
-// Licensed under GPLv2+
-// Refer to the license.txt file included.
+// SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <cstddef>
 #include <cstdio>
@@ -15,9 +14,15 @@
 #include <unistd.h>
 #endif
 
+#ifdef ANDROID
+#include <algorithm>
+
+#include "jni/AndroidCommon/AndroidCommon.h"
+#endif
+
 #include "Common/CommonTypes.h"
-#include "Common/File.h"
 #include "Common/FileUtil.h"
+#include "Common/IOFile.h"
 
 namespace File
 {
@@ -59,10 +64,17 @@ void IOFile::Swap(IOFile& other) noexcept
 bool IOFile::Open(const std::string& filename, const char openmode[])
 {
   Close();
+
 #ifdef _WIN32
   m_good = _tfopen_s(&m_file, UTF8ToTStr(filename).c_str(), UTF8ToTStr(openmode).c_str()) == 0;
 #else
-  m_file = std::fopen(filename.c_str(), openmode);
+#ifdef ANDROID
+  if (IsPathAndroidContent(filename))
+    m_file = fdopen(OpenAndroidContent(filename, OpenModeToAndroid(openmode)), openmode);
+  else
+#endif
+    m_file = std::fopen(filename.c_str(), openmode);
+
   m_good = m_file != nullptr;
 #endif
 
